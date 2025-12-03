@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basketball Scoreboard</title>
+    <style>
+        /* --- CSS Styling (ปรับปรุงขนาดตัวอักษร) --- */
+        body { background-color: #1a1a1a; color: white; font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; min-height: 100vh; width: 100vw; margin: 0; padding: 10px; }
+        .scoreboard { background-color: #000; border: 5px solid #444; border-radius: 15px; padding: 20px; width: 95%; max-width: 1000px; box-shadow: 0 0 20px rgba(0,0,0,0.8); }
+        .top-section { display: grid; grid-template-columns: 1fr auto auto 1fr; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .poss-arrow { font-size: clamp(1.8rem, 5vw, 3rem); color: #ffcc00; font-weight: bold; display: none; text-shadow: 0 0 5px #ffcc00; line-height: 1; }
+        .timer-display { font-size: clamp(3rem, 10vw, 5rem); color: #ff0000; font-weight: bold; text-shadow: 0 0 10px #ff0000; background: #222; padding: 0 10px; border-radius: 5px; display: inline-block; }
+        .score { font-size: clamp(3.5rem, 15vw, 6rem); font-weight: bold; color: #00ff00; text-shadow: 0 0 10px #00ff00; margin: 5px 0; background: #000; border-radius: 5px; }
+        
+        /* Quarter Display & Label */
+        .quarter-box > div:first-child { font-size: clamp(0.9rem, 2vw, 1.2rem); color: #aaa; }
+        
+        /* 💡 NEW: Style สำหรับช่อง Input Quarter ให้เหมือน Display */
+        .quarter-display-input {
+            background: #222; 
+            border: 2px solid #555; 
+            padding: 5px 15px; 
+            border-radius: 5px; 
+            color: #ffcc00; 
+            font-size: clamp(2rem, 5vw, 3rem); 
+            font-weight: bold;
+            width: 60px; 
+            text-align: center;
+            -moz-appearance: textfield; /* ซ่อนปุ่มลูกศรใน Firefox */
+        }
+        .quarter-display-input::-webkit-outer-spin-button,
+        .quarter-display-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .teams-container { display: flex; justify-content: space-around; gap: 15px; flex-wrap: wrap; }
+        .team { flex: 1; min-width: 45%; background-color: #222; padding: 15px; border-radius: 10px; text-align: center; }
+        @media (max-width: 500px) { .team { min-width: 100%; margin-bottom: 15px; } }
+        
+        .team-name { font-size: clamp(1.8rem, 5vw, 2.5rem); margin-bottom: 10px; text-transform: uppercase; color: #fff; border: 1px dashed #444; cursor: text; }
+        
+        .fouls { font-size: clamp(1.4rem, 4vw, 1.8rem); color: #ffaa00; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; }
+        .bonus-tag { background-color: #990000; color: white; padding: 2px 7px; border-radius: 3px; font-size: 0.8rem; font-weight: bold; margin-left: 15px; letter-spacing: 1px; display: none; }
+        
+        .set-time-controls { margin: 15px 0 20px; text-align: center; color: #aaa; display: flex; justify-content: center; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px dashed #333; }
+        .set-time-controls input { background-color: #333; border: 1px solid #555; color: white; padding: 5px; text-align: center; border-radius: 3px; font-size: 1rem; -moz-appearance: textfield; }
+        .set-time-controls input::-webkit-outer-spin-button, .set-time-controls input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        .controls { grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 10px; display: grid; }
+        button { padding: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; border: none; border-radius: 5px; background-color: #444; color: white; transition: 0.2s; }
+        button:hover { background-color: #666; }
+        
+        .btn-point { background-color: #333; border: 1px solid #555; }
+        
+        .btn-score-minus { background-color: #660000; }
+        .btn-foul-plus { background-color: #553333; }
+        .btn-foul-minus { background-color: #333355; }
+
+        .main-controls { margin-top: 20px; display: flex; justify-content: center; gap: 10px; }
+        .btn-start { background-color: #006600; padding: 10px 30px; }
+        .btn-stop { background-color: #990000; padding: 10px 30px; }
+        .btn-reset { background-color: #cc7a00; padding: 10px 30px; }
+    </style>
+</head>
+<body>
+
+    <h1 style="color:#ddd;">BASKETBALL SCOREBOARD</h1>
+
+    <div class="scoreboard">
+        <div class="top-section">
+            <div class="poss-home-box">
+                <div class="poss-arrow" id="poss-home-arrow">◀ POSS</div>
+            </div>
+            <div class="quarter-box">
+                <div style="color:#aaa;">PERIOD</div> 
+                
+                <input type="number" id="period-input" value="1" min="1" max="4" 
+                       onblur="setPeriodFromInput(this.value)" 
+                       class="quarter-display-input">
+
+                <button onclick="advanceNextQuarter()" style="font-size:0.8rem; margin-top:5px;">ADVANCE Q</button>
+            </div>
+            <div class="timer-box">
+                <div class="timer-display" id="timer">10:00</div>
+            </div>
+            <div class="poss-guest-box">
+                <div class="poss-arrow" id="poss-guest-arrow">POSS ▶</div>
+            </div>
+        </div>
+        
+        <div class="set-time-controls">
+            <span style="font-weight: bold;">SET QUARTER TIME:</span>
+            <input type="number" id="set-min" value="10" min="0" max="60" style="width: 50px;"> Min
+            <input type="number" id="set-sec" value="00" min="0" max="59" style="width: 50px;"> Sec
+            <button onclick="setTimerDuration()" style="background-color: #005080;">SET TIME</button>
+        </div>
+
+        <div class="teams-container">
+            <div class="team">
+                <div class="team-name home-color" contenteditable="true">HOME</div>
+                <div class="score" id="score-home">00</div>
+                <div class="fouls">FOULS: <span id="foul-home">0</span><span class="bonus-tag" id="bonus-home">BONUS</span></div>
+                <div class="controls">
+                    <button class="btn-point" onclick="addScore('home', 1)">+1</button>
+                    <button class="btn-point" onclick="addScore('home', 2)">+2</button>
+                    <button class="btn-point" onclick="addScore('home', 3)">+3</button>
+
+                    <button class="btn-score-minus" onclick="subtractScore('home')">Score -1</button>
+                    <button class="btn-foul-plus" onclick="addFoul('home')">FOUL +1</button>
+                    <button class="btn-foul-minus" onclick="subtractFoul('home')">FOUL -1</button>
+                </div>
+            </div>
+
+            <div class="team">
+                <div class="team-name guest-color" contenteditable="true">GUEST</div>
+                <div class="score" id="score-guest">00</div>
+                <div class="fouls">FOULS: <span id="foul-guest">0</span><span class="bonus-tag" id="bonus-guest">BONUS</span></div>
+                <div class="controls">
+                    <button class="btn-point" onclick="addScore('guest', 1)">+1</button>
+                    <button class="btn-point" onclick="addScore('guest', 2)">+2</button>
+                    <button class="btn-point" onclick="addScore('guest', 3)">+3</button>
+                    
+                    <button class="btn-score-minus" onclick="subtractScore('guest')">Score -1</button>
+                    <button class="btn-foul-plus" onclick="addFoul('guest')">FOUL +1</button>
+                    <button class="btn-foul-minus" onclick="subtractFoul('guest')">FOUL -1</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-controls">
+            <button id="btnPoss" class="btn-reset" onclick="togglePossession()" style="background-color: #5d5d00; flex-grow: 1;">POSSESSION</button>
+            <button id="btnStart" class="btn-start" onclick="startTimer()">START</button>
+            <button class="btn-stop" onclick="stopTimer()">STOP</button>
+            <button class="btn-reset" onclick="resetGame()">RESET</button>
+        </div>
+    </div>
+
+    <script>
+        // --- JAVASCRIPT LOGIC ---
+        
+        let scores = { home: 0, guest: 0 };
+        let fouls = { home: 0, guest: 0 };
+        let period = 1;
+        let possession = 'home'; 
+        
+        let initialTimeInSeconds = 600; 
+        let timeInSeconds = 600;
+        let timerInterval = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            timeInSeconds = initialTimeInSeconds;
+            updateDisplay(); 
+        });
+        
+        // 💡 NEW: ฟังก์ชันแก้ไข Quarter ผ่าน Input Field (ไม่รีเซ็ตเวลา/ฟาวล์)
+        function setPeriodFromInput(newValue) {
+            let num = parseInt(newValue);
+            
+            // Validate input
+            if (isNaN(num) || num < 1 || num > 4) {
+                alert("Quarter ต้องอยู่ระหว่าง 1 ถึง 4!");
+                document.getElementById('period-input').value = period; // Revert to current period
+                return;
+            }
+            
+            period = num;
+            updateDisplay(); 
+        }
+
+        // 💡 NEW: ฟังก์ชันขึ้น Quarter ถัดไปตามเกม (รีเซ็ตเวลา/ฟาวล์)
+        function advanceNextQuarter() {
+            if (period >= 4) {
+                alert("End of Regulation! กด RESET เพื่อเริ่มเกมใหม่");
+                return;
+            }
+
+            if (confirm(`Advance to Period ${period + 1}? การดำเนินการนี้จะรีเซ็ตเวลาและฟาวล์สำหรับทั้งสองทีม`)) {
+                stopTimer();
+                period++;
+                
+                // รีเซ็ตฟาวล์และเวลา
+                fouls = { home: 0, guest: 0 }; 
+                timeInSeconds = initialTimeInSeconds;
+                
+                updateDisplay();
+            }
+        }
+        
+        // --- ฟังก์ชันอื่นๆ ---
+
+        function subtractScore(team) {
+            if (scores[team] > 0) {
+                scores[team] -= 1;
+                updateDisplay();
+            }
+        }
+
+        function subtractFoul(team) {
+            if (fouls[team] > 0) {
+                fouls[team] -= 1;
+                updateDisplay();
+            }
+        }
+
+        function setTimerDuration() {
+            const minInput = document.getElementById('set-min');
+            const secInput = document.getElementById('set-sec');
+            
+            let newMinutes = parseInt(minInput.value) || 0;
+            let newSeconds = parseInt(secInput.value) || 0;
+
+            if (newSeconds >= 60) {
+                newMinutes += Math.floor(newSeconds / 60);
+                newSeconds = newSeconds % 60;
+                secInput.value = newSeconds.toString().padStart(2, '0');
+                minInput.value = newMinutes.toString();
+            }
+            
+            const totalSeconds = (newMinutes * 60) + newSeconds;
+            
+            if (totalSeconds > 0) {
+                initialTimeInSeconds = totalSeconds;
+                stopTimer();
+                timeInSeconds = initialTimeInSeconds;
+                updateDisplay();
+                console.log(`TIME SET: ${newMinutes} minutes, ${newSeconds} seconds.`);
+                alert(`ตั้งเวลาควอเตอร์ใหม่เป็น ${newMinutes} นาที ${newSeconds.toString().padStart(2, '0')} วินาที เรียบร้อย`);
+            } else {
+                alert("กรุณาตั้งเวลาให้มากกว่า 0!");
+            }
+        }
+
+        function updateDisplay() {
+            document.getElementById('score-home').innerText = scores.home.toString().padStart(2, '0');
+            document.getElementById('score-guest').innerText = scores.guest.toString().padStart(2, '0');
+            document.getElementById('foul-home').innerText = fouls.home;
+            document.getElementById('foul-guest').innerText = fouls.guest;
+            
+            // 💡 Update the new Input Field for Quarter
+            document.getElementById('period-input').value = period; 
+
+            let minutes = Math.floor(timeInSeconds / 60);
+            let seconds = timeInSeconds % 60;
+            document.getElementById('timer').innerText = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('bonus-home').style.display = (fouls.home >= 5) ? 'inline' : 'none';
+            document.getElementById('bonus-guest').style.display = (fouls.guest >= 5) ? 'inline' : 'none';
+            document.getElementById('poss-home-arrow').style.display = (possession === 'home') ? 'inline' : 'none';
+            document.getElementById('poss-guest-arrow').style.display = (possession === 'guest') ? 'inline' : 'none';
+        }
+
+        function addScore(team, points) {
+            scores[team] += points;
+            updateDisplay();
+        }
+
+        function addFoul(team) {
+            fouls[team]++;
+            updateDisplay();
+            if (fouls[team] == 5) {
+                console.log(team.toUpperCase() + " Team is now in BONUS!");
+            }
+        }
+
+        function togglePossession() {
+            possession = (possession === 'home') ? 'guest' : 'home';
+            updateDisplay();
+        }
+
+        function startTimer() {
+            if (timerInterval) return; 
+            if (timeInSeconds <= 0) {
+                alert("Time is already zero. Press ADVANCE Q or RESET.");
+                return;
+            }
+
+            document.getElementById('btnStart').style.opacity = "0.5";
+            document.getElementById('btnStart').innerText = "RUNNING...";
+
+            timerInterval = setInterval(() => {
+                if (timeInSeconds > 0) {
+                    timeInSeconds--;
+                    updateDisplay();
+                } else {
+                    stopTimer();
+                    alert("Time's up!");
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            
+            document.getElementById('btnStart').style.opacity = "1";
+            document.getElementById('btnStart').innerText = "START";
+        }
+
+        // NOTE: nextPeriod() function is removed, replaced by advanceNextQuarter()
+
+        function resetGame() {
+            if(confirm("Reset Game?")) {
+                stopTimer();
+                scores = { home: 0, guest: 0 };
+                fouls = { home: 0, guest: 0 };
+                period = 1;
+                timeInSeconds = initialTimeInSeconds;
+                possession = 'home';
+                updateDisplay();
+            }
+        }
+    </script>
+</body>
+</html>
